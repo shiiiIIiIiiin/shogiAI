@@ -73,7 +73,7 @@ class USIEngine:
 
     def _handle_go(self, args: list[str]) -> None:
         # 簡易的に固定深さ探索
-        depth = 3
+        depth = 5
         result = self.engine.search(self.board, depth)
         
         if result.move is not None:

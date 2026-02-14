@@ -50,8 +50,29 @@ class ShogiEngine:
         return best_score, best_move
 
     def _generate_moves(self, board: cshogi.Board) -> List[int]:
-        # ここで手順最適化を入れる（取り・王手・NNの手の確率など）
-        return list(board.legal_moves)
+        """手順最適化: 取る手 → 王手 → その他の順で返す"""
+        captures = []
+        checks = []
+        quiet = []
+
+        for move in board.legal_moves:
+            to_sq = cshogi.move_to(move)
+            # 取る手（駒を食べる手）
+            if board.piece(to_sq) != 0:
+                captures.append(move)
+            # 王手
+            else:
+                board.push(move)
+                is_check = board.is_check()
+                board.pop()
+                if is_check:
+                    checks.append(move)
+                # その他
+                else:
+                    quiet.append(move)
+
+        # 優先順: 取る手 → 王手 → その他
+        return captures + checks + quiet
 
     def evaluate(self, board: cshogi.Board) -> int:
         # まずは駒割り評価（超シンプル）
@@ -79,8 +100,7 @@ class ShogiEngine:
         return material
 
     def _piece_value(self, piece: int) -> int:
-        # 歩〜金、角、飛車、成り駒の簡易値
-        # 1:歩 2:香 3:桂 4:銀 5:金 6:角 7:飛 8-14:成り
+        #1:歩,2:香,3:桂,4:銀,5:金,6:角,7:飛,8-14:成り
         values = {
             1: 100,
             2: 300,
