@@ -20,6 +20,9 @@ class ShogiEngine:
 
     def search(self, board: cshogi.Board, depth: int) -> SearchResult:
         self.nodes = 0
+        mate_move = self._find_mate_in_3(board)
+        if mate_move is not None:
+            return SearchResult(move=mate_move, score=10**8, nodes=self.nodes, depth=3)
         score, move = self._negamax(board, depth, -10**9, 10**9)
         return SearchResult(move=move, score=score, nodes=self.nodes, depth=depth)
 
@@ -73,6 +76,41 @@ class ShogiEngine:
 
         # 優先順: 取る手 → 王手 → その他
         return captures + checks + quiet
+
+    def _find_mate_in_3(self, board: cshogi.Board) -> Optional[int]:
+        """軽量版: 3手詰みがあればその初手を返す"""
+        mate1 = board.mate_move_in_1ply()
+        if mate1 != 0:
+            return mate1
+
+        for move in board.legal_moves:
+            board.push(move)
+            # 直ちに詰み
+            if self._is_checkmate(board):
+                board.pop()
+                return move
+
+            forced = True
+            for reply in board.legal_moves:
+                board.push(reply)
+                mate_reply = board.mate_move_in_1ply()
+                board.pop()
+                if mate_reply == 0:
+                    forced = False
+                    break
+
+            board.pop()
+            if forced:
+                return move
+
+        return None
+
+    def _is_checkmate(self, board: cshogi.Board) -> bool:
+        if not board.is_check():
+            return False
+        for _ in board.legal_moves:
+            return False
+        return True
 
     def evaluate(self, board: cshogi.Board) -> int:
         # まずは駒割り評価（超シンプル）
