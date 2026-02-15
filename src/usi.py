@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import sys
-import traceback
-from datetime import datetime
 import cshogi
 
 from engine import ShogiEngine
@@ -12,7 +10,6 @@ class USIEngine:
     def __init__(self) -> None:
         self.board = cshogi.Board()
         self.engine = ShogiEngine()
-        self.log_path = "usi.log"
 
     def run(self) -> None:
         while True:
@@ -20,43 +17,33 @@ class USIEngine:
                 line = input().strip()
             except EOFError:
                 break
-            except Exception:
-                self._log("input error", traceback.format_exc())
-                break
 
             if not line:
                 continue
 
             parts = line.split()
             cmd = parts[0]
-            self._log("cmd", line)
 
-            try:
-                if cmd == "usi":
-                    print("id name shogiAI")
-                    print("id author kimura")
-                    print("usiok")
-                    sys.stdout.flush()
-
-                elif cmd == "isready":
-                    print("readyok")
-                    sys.stdout.flush()
-
-                elif cmd == "usinewgame":
-                    self.board = cshogi.Board()
-
-                elif cmd == "position":
-                    self._handle_position(parts[1:])
-
-                elif cmd == "go":
-                    self._handle_go(parts[1:])
-
-                elif cmd == "quit":
-                    break
-            except Exception:
-                self._log("exception", traceback.format_exc())
-                print("bestmove resign")
+            if cmd == "usi":
+                print("id name ShogiAlgo")
+                print("id author kimura")
+                print("usiok")
                 sys.stdout.flush()
+
+            elif cmd == "isready":
+                print("readyok")
+                sys.stdout.flush()
+
+            elif cmd == "usinewgame":
+                self.board = cshogi.Board()
+
+            elif cmd == "position":
+                self._handle_position(parts[1:])
+
+            elif cmd == "go":
+                self._handle_go(parts[1:])
+
+            elif cmd == "quit":
                 break
 
     def _handle_position(self, args: list[str]) -> None:
@@ -96,11 +83,6 @@ class USIEngine:
             print("bestmove resign")
         
         sys.stdout.flush()
-
-    def _log(self, tag: str, message: str) -> None:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(self.log_path, "a", encoding="utf-8") as f:
-            f.write(f"[{timestamp}] {tag}: {message}\n")
 
 
 if __name__ == "__main__":

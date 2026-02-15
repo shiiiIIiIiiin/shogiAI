@@ -20,11 +20,23 @@ class ShogiEngine:
 
     def search(self, board: cshogi.Board, depth: int) -> SearchResult:
         self.nodes = 0
-        mate_move = self._find_mate_in_3(board)
-        if mate_move is not None:
-            return SearchResult(move=mate_move, score=10**8, nodes=self.nodes, depth=3)
-        score, move = self._negamax(board, depth, -10**9, 10**9)
-        return SearchResult(move=move, score=score, nodes=self.nodes, depth=depth)
+        
+        # ルートノードの候補手を評価
+        root_moves = []
+        for move in self._generate_moves(board):
+            board.push(move)
+            score, _ = self._negamax(board, depth - 1, -10**9, 10**9)
+            score = -score
+            board.pop()
+            root_moves.append((move, score))
+        
+        # 最善手を選択
+        if not root_moves:
+            return SearchResult(move=None, score=0, nodes=self.nodes, depth=depth)
+        
+        best_move, best_score = max(root_moves, key=lambda x: x[1])
+        
+        return SearchResult(move=best_move, score=best_score, nodes=self.nodes, depth=depth)
 
     def _negamax(self, board: cshogi.Board, depth: int, alpha: int, beta: int) -> Tuple[int, Optional[int]]:
         self.nodes += 1
@@ -77,54 +89,27 @@ class ShogiEngine:
         # 優先順: 取る手 → 王手 → その他
         return captures + checks + quiet
 
-    def _find_mate_in_3(self, board: cshogi.Board) -> Optional[int]:
-        """軽量版: 3手詰みがあればその初手を返す"""
-        mate1 = board.mate_move_in_1ply()
-        if mate1 != 0:
-            return mate1
-
-        for move in board.legal_moves:
-            board.push(move)
-            # 直ちに詰み
-            if self._is_checkmate(board):
-                board.pop()
-                return move
-
-            forced = True
-            for reply in board.legal_moves:
-                board.push(reply)
-                mate_reply = board.mate_move_in_1ply()
-                board.pop()
-                if mate_reply == 0:
-                    forced = False
-                    break
-
-            board.pop()
-            if forced:
-                return move
-
-        return None
-
-    def _is_checkmate(self, board: cshogi.Board) -> bool:
-        if not board.is_check():
-            return False
-        for _ in board.legal_moves:
-            return False
-        return True
-
     def evaluate(self, board: cshogi.Board) -> int:
-        # まずは駒割り評価（超シンプル）
-        # 盤上と持ち駒の合計で評価
+        # 駒割り評価
         material = 0
 
-        for piece in board.pieces:
+        # 盤上の駒を評価
+        for sq in range(81):
+            piece = board.piece(sq)
             if piece == 0:
                 continue
-            if 1 <= piece <= 14:
-                material += self._piece_value(piece)
-            elif 17 <= piece <= 30:
-                material -= self._piece_value(piece - 16)
+            
+            piece_type = board.piece_type(sq)
+            value = self._piece_value(piece_type)
+            
+            # 先手の駒なら加算、後手の駒なら減算
+            # pieceの値: 先手=1-14, 後手=17-30
+            if piece < 16:
+                material += value
+            else:
+                material -= value
 
+        # 持ち駒を評価
         black_hand, white_hand = board.pieces_in_hand
         for i, count in enumerate(black_hand, start=1):
             material += count * self._piece_value(i)
@@ -137,22 +122,22 @@ class ShogiEngine:
 
         return material
 
-    def _piece_value(self, piece: int) -> int:
-        #1:歩,2:香,3:桂,4:銀,5:金,6:角,7:飛,8-14:成り
+    def _piece_value(self, piece_type: int) -> int:
+        # cshogiの駒種別: 1=歩,2=香,3=桂,4=銀,5=角,6=飛,7=金,8=王,9-14=成り駒
         values = {
-            1: 100,
-            2: 300,
-            3: 300,
-            4: 400,
-            5: 500,
-            6: 700,
-            7: 800,
-            8: 500,
-            9: 500,
-            10: 500,
-            11: 600,
-            12: 500,
-            13: 900,
-            14: 900,
+            1: 100,   # 歩
+            2: 300,   # 香
+            3: 300,   # 桂
+            4: 400,   # 銀
+            5: 700,   # 角
+            6: 800,   # 飛
+            7: 500,   # 金
+            8: 10000, # 玉
+            9: 500,   # と
+            10: 500,  # 成香
+            11: 500,  # 成桂
+            12: 600,  # 成銀
+            13: 900,  # 馬
+            14: 900,  # 龍
         }
-        return values.get(piece, 0)
+        return values.get(piece_type, 0)
