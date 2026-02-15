@@ -20,23 +20,16 @@ class ShogiEngine:
 
     def search(self, board: cshogi.Board, depth: int) -> SearchResult:
         self.nodes = 0
+        score, move = self._negamax(board, depth, -10**9, 10**9)
         
-        # ルートノードの候補手を評価
-        root_moves = []
-        for move in self._generate_moves(board):
-            board.push(move)
-            score, _ = self._negamax(board, depth - 1, -10**9, 10**9)
-            score = -score
-            board.pop()
-            root_moves.append((move, score))
+        # デバッグ: 返された手を確認
+        if move is None:
+            print(f"info string ERROR: move is None!", flush=True)
+        else:
+            move_usi = cshogi.move_to_usi(move)
+            print(f"info string Selected: {move_usi}, Score: {score}", flush=True)
         
-        # 最善手を選択
-        if not root_moves:
-            return SearchResult(move=None, score=0, nodes=self.nodes, depth=depth)
-        
-        best_move, best_score = max(root_moves, key=lambda x: x[1])
-        
-        return SearchResult(move=best_move, score=best_score, nodes=self.nodes, depth=depth)
+        return SearchResult(move=move, score=score, nodes=self.nodes, depth=depth)
 
     def _negamax(self, board: cshogi.Board, depth: int, alpha: int, beta: int) -> Tuple[int, Optional[int]]:
         self.nodes += 1
@@ -62,6 +55,7 @@ class ShogiEngine:
             if alpha >= beta:
                 break
 
+        # 安全装置なし（原因特定用）
         return best_score, best_move
 
     def _generate_moves(self, board: cshogi.Board) -> List[int]:
