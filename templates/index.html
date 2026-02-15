@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShogiAlgo Web</title>
+    <style>
+      body {
+        font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+        background: #f6f4ef;
+        margin: 0;
+        padding: 24px;
+      }
+      .container {
+        max-width: 920px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        padding: 20px;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 24px;
+      }
+      .board-wrap {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .board {
+        border-collapse: collapse;
+        background: #f2d59c;
+        border: 2px solid #c19b5f;
+      }
+      .board td {
+        width: 48px;
+        height: 48px;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid #c19b5f;
+        font-size: 22px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .board td:hover {
+        outline: 2px solid #3a6ea5;
+        outline-offset: -2px;
+      }
+      .board td.selected {
+        background: #ffe08a;
+      }
+      .board td.white {
+        transform: rotate(180deg);
+        color: #7a2d2d;
+      }
+      .board td.black {
+        color: #2a2a2a;
+      }
+      .board td.empty {
+        color: transparent;
+      }
+      .panel {
+        min-width: 260px;
+      }
+      .hands {
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      .hands-layout {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .hand {
+        flex: 1 1 200px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 10px;
+        background: #faf8f2;
+      }
+      .hand-title {
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .hand.ai {
+        background: #f1f6ff;
+      }
+      .controls {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      input[type="text"],
+      input[type="number"] {
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+      }
+      button {
+        padding: 10px 12px;
+        border: none;
+        border-radius: 8px;
+        background: #3a6ea5;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #6c757d;
+      }
+      .status {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #333;
+        white-space: pre-wrap;
+      }
+      .thinking {
+        display: none;
+        margin-top: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #fff3cd;
+        color: #664d03;
+        font-weight: 600;
+      }
+      .thinking.visible {
+        display: block;
+      }
+      .hand-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .hand-buttons button {
+        background: #f0b45f;
+        color: #2a2a2a;
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+      .turn {
+        margin-top: 6px;
+        font-size: 14px;
+        color: #666;
+      }
+      .hint {
+        font-size: 12px;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>ShogiAlgo Web</h1>
+      <div class="board-wrap">
+        <div id="board">{{ board_html | safe }}</div>
+        <div class="panel">
+          <div class="turn">手番: <span id="turn">{{ turn }}</span></div>
+          <div class="controls">
+            <div class="hint">
+              盤面をクリック or ドラッグで指すと即実行されます
+            </div>
+            <button id="reset" class="secondary">リセット</button>
+          </div>
+          <div class="hand-ui">
+            <div class="hint">持ち駒（先手）: クリックしてから盤面を選択</div>
+            <div id="player-hand" class="hand-buttons"></div>
+          </div>
+          <div id="status" class="status"></div>
+          <div id="thinking" class="thinking">AI思考中…</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const state = {
+        sfen: "{{ sfen }}",
+      };
+
+      const boardEl = document.getElementById("board");
+      const statusEl = document.getElementById("status");
+      const turnEl = document.getElementById("turn");
+      const thinkingEl = document.getElementById("thinking");
+      let fromSq = null;
+      let pendingDrop = null;
+      let pendingMove = "";
+
+      const handMap = [
+        { label: "歩", usi: "P" },
+        { label: "香", usi: "L" },
+        { label: "桂", usi: "N" },
+        { label: "銀", usi: "S" },
+        { label: "金", usi: "G" },
+        { label: "角", usi: "B" },
+        { label: "飛", usi: "R" },
+      ];
+
+      async function post(path, payload) {
+        const res = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || "error");
+        }
+        return data;
+      }
+
+      function applyState(data) {
+        state.sfen = data.sfen;
+        boardEl.innerHTML = data.board_html;
+        turnEl.textContent = data.turn;
+        statusEl.textContent = data.message || "";
+        fromSq = null;
+        pendingDrop = null;
+        pendingMove = "";
+        renderHandButtons(data.hands?.black || []);
+        bindBoardEvents();
+      }
+
+      function renderHandButtons(counts) {
+        const container = document.getElementById("player-hand");
+        container.innerHTML = "";
+        handMap.forEach((piece, idx) => {
+          const count = counts[idx] || 0;
+          if (count <= 0) return;
+          const btn = document.createElement("button");
+          btn.textContent = `${piece.label}×${count}`;
+          btn.addEventListener("click", () => {
+            pendingDrop = piece.usi;
+            fromSq = null;
+            clearSelection();
+            statusEl.textContent = `${piece.label}を打つマスを選択してください`;
+          });
+          container.appendChild(btn);
+        });
+      }
+
+      async function maybePromote(from, to) {
+        if (from.includes("*")) {
+          return `${from}${to}`;
+        }
+        const res = await post("/api/promote_check", {
+          sfen: state.sfen,
+          from,
+          to,
+        });
+        if (!res.legal) {
+          throw new Error("その手は合法ではありません");
+        }
+        if (res.must_promote) {
+          return `${from}${to}+`;
+        }
+        if (res.can_promote) {
+          const ok = window.confirm("成りますか？");
+          return ok ? `${from}${to}+` : `${from}${to}`;
+        }
+        return `${from}${to}`;
+      }
+
+      function clearSelection() {
+        const selected = boardEl.querySelector("td.selected");
+        if (selected) selected.classList.remove("selected");
+      }
+
+      function bindBoardEvents() {
+        boardEl.querySelectorAll("td[data-name]").forEach((cell) => {
+          cell.setAttribute("draggable", "true");
+
+          cell.addEventListener("mouseenter", () => {
+            statusEl.textContent = `マス: ${cell.dataset.name}`;
+          });
+
+          cell.addEventListener("click", async () => {
+            const name = cell.dataset.name;
+            if (pendingDrop) {
+              try {
+                const move = await maybePromote(`${pendingDrop}*`, name);
+                pendingMove = move;
+                await submitMove();
+              } catch (e) {
+                statusEl.textContent = e.message;
+              }
+              pendingDrop = null;
+              return;
+            }
+            if (!fromSq) {
+              fromSq = name;
+              clearSelection();
+              cell.classList.add("selected");
+              pendingMove = "";
+              return;
+            }
+            try {
+              const move = await maybePromote(fromSq, name);
+              pendingMove = move;
+              await submitMove();
+            } catch (e) {
+              statusEl.textContent = e.message;
+            }
+            fromSq = null;
+            clearSelection();
+          });
+
+          cell.addEventListener("dragstart", (e) => {
+            fromSq = cell.dataset.name;
+            clearSelection();
+            cell.classList.add("selected");
+            e.dataTransfer.setData("text/plain", fromSq);
+          });
+
+          cell.addEventListener("dragover", (e) => {
+            e.preventDefault();
+          });
+
+          cell.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            const from = e.dataTransfer.getData("text/plain");
+            const to = cell.dataset.name;
+            if (pendingDrop) {
+              try {
+                const move = await maybePromote(`${pendingDrop}*`, to);
+                pendingMove = move;
+                await submitMove();
+              } catch (e) {
+                statusEl.textContent = e.message;
+              }
+              pendingDrop = null;
+              clearSelection();
+              return;
+            }
+            if (!from) return;
+            try {
+              const move = await maybePromote(from, to);
+              pendingMove = move;
+              await submitMove();
+            } catch (e) {
+              statusEl.textContent = e.message;
+            }
+            fromSq = null;
+            clearSelection();
+          });
+        });
+      }
+
+      async function submitMove() {
+        const move = pendingMove.trim();
+        if (!move) {
+          statusEl.textContent = "手を入力してください";
+          return;
+        }
+        try {
+          // まずプレイヤーの手を反映
+          const playerState = await post("/api/player_move", {
+            sfen: state.sfen,
+            move,
+          });
+          applyState(playerState);
+          thinkingEl.classList.add("visible");
+
+          await new Promise((r) => setTimeout(r, 200));
+
+          // AIの手
+          const aiState = await post("/api/ai", { sfen: state.sfen });
+          applyState(aiState);
+          thinkingEl.classList.remove("visible");
+        } catch (e) {
+          thinkingEl.classList.remove("visible");
+          statusEl.textContent = e.message;
+        }
+      }
+
+      document.getElementById("reset").addEventListener("click", async () => {
+        try {
+          const data = await post("/api/reset", {});
+          applyState(data);
+        } catch (e) {
+          statusEl.textContent = e.message;
+        }
+      });
+
+      bindBoardEvents();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShogiAlgo Web</title>
+    <style>
+      body {
+        font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+        background: #f6f4ef;
+        margin: 0;
+        padding: 24px;
+      }
+      .container {
+        max-width: 920px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        padding: 20px;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 24px;
+      }
+      .board-wrap {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+        flex-wrap: nowrap;
+      }
+      .board {
+        border-collapse: collapse;
+        background: #f2d59c;
+        border: 2px solid #c19b5f;
+      }
+      .board td {
+        width: 48px;
+        height: 48px;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid #c19b5f;
+        font-size: 22px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .board td:hover {
+        outline: 2px solid #3a6ea5;
+        outline-offset: -2px;
+      }
+      .board td.selected {
+        background: #ffe08a;
+      }
+      .board td.white {
+        transform: rotate(180deg);
+        color: #7a2d2d;
+      }
+      .board td.black {
+        color: #2a2a2a;
+      }
+      .board td.empty {
+        color: transparent;
+      }
+      .panel {
+        min-width: 260px;
+      }
+      .turn {
+        margin-top: 6px;
+        font-size: 26px;
+        font-weight: 800;
+        color: #333;
+      }
+      .hand-ui {
+        margin-top: 16px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .hand-section {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+      }
+      .hand-section:last-child {
+        border-bottom: none;
+      }
+      .hand-section.player {
+        background: #f9f6f0;
+      }
+      .hand-section.ai {
+        background: #f1f6ff;
+      }
+      .hand-section-title {
+        font-weight: 700;
+        font-size: 14px;
+        margin-bottom: 8px;
+        color: #333;
+      }
+      .controls {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+        padding: 12px;
+        background: #f0f5ff;
+        border: 1px solid #d0ddf0;
+        border-radius: 8px;
+      }
+      .controls .hint {
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+      }
+      input[type="text"],
+      input[type="number"] {
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+      }
+      button {
+        padding: 10px 12px;
+        border: none;
+        border-radius: 8px;
+        background: #3a6ea5;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #6c757d;
+      }
+      .status {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #333;
+        white-space: pre-wrap;
+      }
+      .thinking {
+        display: none;
+        margin-top: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #fff3cd;
+        color: #664d03;
+        font-weight: 600;
+      }
+      .thinking.visible {
+        display: block;
+      }
+      .hand-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .hand-buttons button {
+        background: #f0b45f;
+        color: #2a2a2a;
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-size: 13px;
+      }
+      .hint {
+        font-size: 12px;
+        color: #888;
+      }
+      #reset {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px 14px;
+        font-size: 13px;
+        z-index: 1000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>ShogiAlgo Web</h1>
+      <div class="board-wrap">
+        <div id="board">{{ board_html | safe }}</div>
+        <div class="panel">
+          <div class="turn">手番: <span id="turn">{{ turn }}</span></div>
+          <div class="controls">
+            <div class="hint">
+              操作：<br />
+              ①盤面をクリック/ドラッグで指す<br />
+              ②プレイヤーの持ち駒をドラッグで盤面に置く
+            </div>
+          </div>
+          <div
+            style="
+              font-weight: 700;
+              font-size: 15px;
+              margin-top: 16px;
+              margin-bottom: 8px;
+              color: #333;
+            "
+          >
+            持ち駒一覧
+          </div>
+          <div class="hand-ui">
+            <div class="hand-section player">
+              <div class="hand-section-title">🙂 プレイヤー（先手）</div>
+              <div id="player-hand" class="hand-buttons"></div>
+            </div>
+            <div class="hand-section ai">
+              <div class="hand-section-title">🤖 AI（後手）</div>
+              <div id="ai-hand" class="hand-buttons"></div>
+            </div>
+          </div>
+          <div id="status" class="status"></div>
+          <div id="thinking" class="thinking">AI思考中…</div>
+        </div>
+      </div>
+    </div>
+
+    <button id="reset" class="secondary">リセット</button>
+
+    <script>
+      const state = {
+        sfen: "{{ sfen }}",
+      };
+
+      const boardEl = document.getElementById("board");
+      const statusEl = document.getElementById("status");
+      const turnEl = document.getElementById("turn");
+      const thinkingEl = document.getElementById("thinking");
+      let fromSq = null;
+      let pendingDrop = null;
+      let pendingMove = "";
+
+      const handMap = [
+        { label: "歩", usi: "P" },
+        { label: "香", usi: "L" },
+        { label: "桂", usi: "N" },
+        { label: "銀", usi: "S" },
+        { label: "金", usi: "G" },
+        { label: "角", usi: "B" },
+        { label: "飛", usi: "R" },
+      ];
+
+      async function post(path, payload) {
+        const res = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || "error");
+        }
+        return data;
+      }
+
+      function applyState(data) {
+        state.sfen = data.sfen;
+        boardEl.innerHTML = data.board_html;
+        turnEl.textContent = data.turn === "先手" ? "プレイヤー" : "AI";
+        statusEl.textContent = data.message || "";
+        fromSq = null;
+        pendingDrop = null;
+        pendingMove = "";
+        renderHandButtons(data.hands?.black || [], data.hands?.white || []);
+        bindBoardEvents();
+      }
+
+      function renderHandButtons(playerCounts, aiCounts) {
+        const playerContainer = document.getElementById("player-hand");
+        const aiContainer = document.getElementById("ai-hand");
+        playerContainer.innerHTML = "";
+        aiContainer.innerHTML = "";
+
+        // プレイヤー（先手）の持ち駒
+        let hasPlayerHands = false;
+        handMap.forEach((piece, idx) => {
+          const count = playerCounts[idx] || 0;
+          if (count <= 0) return;
+          hasPlayerHands = true;
+          const btn = document.createElement("button");
+          btn.textContent = `${piece.label}×${count}`;
+          btn.setAttribute("draggable", "true");
+          btn.addEventListener("click", () => {
+            pendingDrop = piece.usi;
+            fromSq = null;
+            clearSelection();
+            statusEl.textContent = `${piece.label}を打つマスをクリック/ドラッグで選択`;
+          });
+          btn.addEventListener("dragstart", (e) => {
+            pendingDrop = piece.usi;
+            fromSq = null;
+            e.dataTransfer.effectAllowed = "copy";
+            e.dataTransfer.setData("text/plain", piece.usi);
+          });
+          playerContainer.appendChild(btn);
+        });
+
+        if (!hasPlayerHands) {
+          const emptySpan = document.createElement("span");
+          emptySpan.style.fontSize = "12px";
+          emptySpan.style.color = "#999";
+          emptySpan.textContent = "持ち駒なし";
+          playerContainer.appendChild(emptySpan);
+        }
+
+        // AI（後手）の持ち駒
+        let hasAiHands = false;
+        handMap.forEach((piece, idx) => {
+          const count = aiCounts[idx] || 0;
+          if (count <= 0) return;
+          hasAiHands = true;
+          const span = document.createElement("span");
+          span.style.fontSize = "13px";
+          span.style.padding = "4px 8px";
+          span.textContent = `${piece.label}×${count}`;
+          aiContainer.appendChild(span);
+        });
+
+        if (!hasAiHands) {
+          const emptySpan = document.createElement("span");
+          emptySpan.style.fontSize = "12px";
+          emptySpan.style.color = "#999";
+          emptySpan.textContent = "持ち駒なし";
+          aiContainer.appendChild(emptySpan);
+        }
+      }
+
+      async function maybePromote(from, to) {
+        if (from.includes("*")) {
+          return `${from}${to}`;
+        }
+        const res = await post("/api/promote_check", {
+          sfen: state.sfen,
+          from,
+          to,
+        });
+        if (!res.legal) {
+          throw new Error("その手は合法ではありません");
+        }
+        if (res.must_promote) {
+          return `${from}${to}+`;
+        }
+        if (res.can_promote) {
+          const ok = window.confirm("成りますか？");
+          return ok ? `${from}${to}+` : `${from}${to}`;
+        }
+        return `${from}${to}`;
+      }
+
+      function clearSelection() {
+        const selected = boardEl.querySelector("td.selected");
+        if (selected) selected.classList.remove("selected");
+      }
+
+      function bindBoardEvents() {
+        boardEl.querySelectorAll("td[data-name]").forEach((cell) => {
+          cell.setAttribute("draggable", "true");
+
+          cell.addEventListener("mouseenter", () => {
+            // 盤面の座標表示はしない
+          });
+
+          cell.addEventListener("click", async () => {
+            const name = cell.dataset.name;
+            if (pendingDrop) {
+              try {
+                const move = await maybePromote(`${pendingDrop}*`, name);
+                pendingMove = move;
+                await submitMove();
+              } catch (e) {
+                statusEl.textContent = e.message;
+              }
+              pendingDrop = null;
+              return;
+            }
+            if (!fromSq) {
+              fromSq = name;
+              clearSelection();
+              cell.classList.add("selected");
+              pendingMove = "";
+              return;
+            }
+            try {
+              const move = await maybePromote(fromSq, name);
+              pendingMove = move;
+              await submitMove();
+            } catch (e) {
+              statusEl.textContent = e.message;
+            }
+            fromSq = null;
+            clearSelection();
+          });
+
+          cell.addEventListener("dragstart", (e) => {
+            fromSq = cell.dataset.name;
+            clearSelection();
+            cell.classList.add("selected");
+            e.dataTransfer.setData("text/plain", fromSq);
+          });
+
+          cell.addEventListener("dragover", (e) => {
+            e.preventDefault();
+          });
+
+          cell.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            const from = e.dataTransfer.getData("text/plain");
+            const to = cell.dataset.name;
+
+            // 持ち駒からのドロップ
+            if (from && handMap.some((p) => p.usi === from)) {
+              try {
+                const move = await maybePromote(`${from}*`, to);
+                pendingMove = move;
+                await submitMove();
+              } catch (e) {
+                statusEl.textContent = e.message;
+              }
+              pendingDrop = null;
+              clearSelection();
+              return;
+            }
+
+            // 盤面からのドラッグ
+            if (pendingDrop) {
+              try {
+                const move = await maybePromote(`${pendingDrop}*`, to);
+                pendingMove = move;
+                await submitMove();
+              } catch (e) {
+                statusEl.textContent = e.message;
+              }
+              pendingDrop = null;
+              clearSelection();
+              return;
+            }
+
+            if (!from) return;
+            try {
+              const move = await maybePromote(from, to);
+              pendingMove = move;
+              await submitMove();
+            } catch (e) {
+              statusEl.textContent = e.message;
+            }
+            fromSq = null;
+            clearSelection();
+          });
+        });
+      }
+
+      async function submitMove() {
+        const move = pendingMove.trim();
+        if (!move) {
+          statusEl.textContent = "手を入力してください";
+          return;
+        }
+        try {
+          // まずプレイヤーの手を反映
+          const playerState = await post("/api/player_move", {
+            sfen: state.sfen,
+            move,
+          });
+          applyState(playerState);
+          thinkingEl.classList.add("visible");
+
+          await new Promise((r) => setTimeout(r, 200));
+
+          // AIの手
+          const aiState = await post("/api/ai", { sfen: state.sfen });
+          applyState(aiState);
+          thinkingEl.classList.remove("visible");
+        } catch (e) {
+          thinkingEl.classList.remove("visible");
+          statusEl.textContent = e.message;
+        }
+      }
+
+      document.getElementById("reset").addEventListener("click", async () => {
+        try {
+          const data = await post("/api/reset", {});
+          applyState(data);
+        } catch (e) {
+          statusEl.textContent = e.message;
+        }
+      });
+
+      bindBoardEvents();
+    </script>
+  </body>
+</html>
