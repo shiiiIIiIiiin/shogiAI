@@ -2,21 +2,33 @@ from __future__ import annotations
 
 import os
 import sys
+import webbrowser
+import threading
 from typing import Dict
 
 from flask import Flask, jsonify, render_template, request
 import cshogi
 
-# web/ からプロジェクトルートを参照
-WEB_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(WEB_DIR)
-SRC_DIR = os.path.join(ROOT_DIR, "src")
-if SRC_DIR not in sys.path:
-    sys.path.append(SRC_DIR)
+# PyInstaller対応: sys.path を先に設定
+if getattr(sys, 'frozen', False):
+    # PyInstaller でバンドルされている場合
+    BASE_DIR = sys._MEIPASS
+    SRC_DIR = os.path.join(BASE_DIR, "src")
+    TEMPLATE_DIR = os.path.join(BASE_DIR, "web", "templates")
+    if SRC_DIR not in sys.path:
+        sys.path.insert(0, SRC_DIR)
+else:
+    # 通常実行時
+    WEB_DIR = os.path.dirname(os.path.abspath(__file__))
+    ROOT_DIR = os.path.dirname(WEB_DIR)
+    SRC_DIR = os.path.join(ROOT_DIR, "src")
+    TEMPLATE_DIR = os.path.join(WEB_DIR, "templates")
+    if SRC_DIR not in sys.path:
+        sys.path.append(SRC_DIR)
 
 from engine import ShogiEngine  # noqa: E402
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
 engine = ShogiEngine()
 
 PIECE_JP = {
@@ -108,8 +120,33 @@ def render_board_html(board: cshogi.Board) -> str:
     return board_html
 
 
+def get_game_result(board: cshogi.Board) -> str:
+    """ゲーム結果を判定"""
+    if not board.is_game_over():
+        return ""
+    
+    # 王手の判定で勝敗を判定
+    # is_checkmate() -> 現在のプレイヤーが詰まされている
+    if board.is_checkmate():
+        # 前のターンのプレイヤーが勝ち
+        winner = "AI（後手）" if board.turn == cshogi.BLACK else "プレイヤー（先手）"
+        return f"終局！ {winner} の勝ち"
+    
+    # 千日手や同一局面繰り返し
+    if board.is_draw():
+        return "終局：引き分け（反復）"
+    
+    # その他の終了
+    return "終局"
+
+
 def json_state(board: cshogi.Board, message: str = "") -> Dict:
     black_hand, white_hand = board.pieces_in_hand
+    
+    # 終局時はメッセージに結果を入れる
+    if board.is_game_over() and not message:
+        message = get_game_result(board)
+    
     return {
         "sfen": board_to_sfen(board),
         "board_html": render_board_html(board),
@@ -279,4 +316,19 @@ def reset():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    PORT = 5000
+    
+    def open_browser():
+        import time
+        time.sleep(2)  # サーバー起動を待つ
+        try:
+            webbrowser.open(f"http://localhost:{PORT}")
+        except Exception as e:
+            print(f"ブラウザ起動エラー: {e}")
+            print(f"ブラウザで http://localhost:{PORT} を開いてください")
+    
+    # ブラウザを自動で開く
+    threading.Thread(target=open_browser, daemon=True).start()
+    
+    print(f"\n Flask サーバーを起動中... http://localhost:{PORT}")
+    app.run(host="127.0.0.1", port=PORT, debug=False)
