@@ -17,15 +17,17 @@ class SearchResult:
 class ShogiEngine:
     def __init__(self) -> None:
         self.nodes = 0
+        # 詰み探索の深さ（手数・ply）。2なら「2手詰め」相当
+        self.mate_search_depth = 2
 
     def search(self, board: cshogi.Board, depth: int) -> SearchResult:
         self.nodes = 0
-        # 一手詰みを最優先でチェック（重い探索を避ける）
-        mate_in_one = self._find_mate_in_one(board)
-        if mate_in_one is not None:
-            move_usi = cshogi.move_to_usi(mate_in_one)
-            print(f"DEBUG: Mate in 1 found: {move_usi}", flush=True)
-            return SearchResult(move=mate_in_one, score=10**8, nodes=self.nodes, depth=depth)
+        # 先読み詰み探索（設定した深さで詰みがあれば即返す）
+        mate_move = self._find_mate(board, self.mate_search_depth)
+        if mate_move is not None:
+            move_usi = cshogi.move_to_usi(mate_move)
+            print(f"DEBUG: Mate in {self.mate_search_depth} found: {move_usi}", flush=True)
+            return SearchResult(move=mate_move, score=10**8, nodes=self.nodes, depth=depth)
         score, move = self._negamax(board, depth, -10**9, 10**9)
         
         # デバッグ: 返された手を確認
@@ -52,17 +54,46 @@ class ShogiEngine:
         
         return SearchResult(move=move, score=score, nodes=self.nodes, depth=depth)
 
-    def _find_mate_in_one(self, board: cshogi.Board) -> Optional[int]:
-        """一手で詰む手があれば返す。なければNone。"""
+    def _find_mate(self, board: cshogi.Board, depth: int) -> Optional[int]:
+        """depth手以内の詰み手があれば返す。なければNone。"""
+        if depth <= 0:
+            return None
         for move in board.legal_moves:
             board.push(move)
-            # cshogiにはis_checkmateが無い環境があるため、
-            # 「王手」かつ「合法手が0」を詰みとして判定する
-            is_mate = board.is_check() and not any(board.legal_moves)
-            board.pop()
-            if is_mate:
+            if self._is_forced_mate(board, depth - 1, attacker=False):
+                board.pop()
                 return move
+            board.pop()
         return None
+
+    def _is_forced_mate(self, board: cshogi.Board, depth: int, attacker: bool) -> bool:
+        """手番側がdepth手以内に詰ませられるならTrue。"""
+        if depth <= 0:
+            return False
+
+        legal = list(board.legal_moves)
+        if not legal:
+            # 合法手が無い場合、王手中なら詰み
+            return board.is_check()
+
+        if attacker:
+            # 詰ませる側：どれか1つでも詰ませられればOK
+            for move in legal:
+                board.push(move)
+                if self._is_forced_mate(board, depth - 1, attacker=False):
+                    board.pop()
+                    return True
+                board.pop()
+            return False
+
+        # 受ける側：全ての手で詰みが避けられない場合のみ詰み
+        for move in legal:
+            board.push(move)
+            if not self._is_forced_mate(board, depth - 1, attacker=True):
+                board.pop()
+                return False
+            board.pop()
+        return True
 
     def _negamax(self, board: cshogi.Board, depth: int, alpha: int, beta: int) -> Tuple[int, Optional[int]]:
         self.nodes += 1

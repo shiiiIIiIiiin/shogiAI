@@ -87,3 +87,14 @@ AttributeError: 'cshogi._cshogi.Board' object has no attribute 'is_checkmate'
 
 === Session started at 2026-02-17 04:44:46.864485 ===
 [04:44:46.864] Selected: S*5d, Score: 100000000, Nodes: 0
+
+=== Session started at 2026-02-17 04:49:16.416382 ===
+[04:49:16.422] Selected: G*4e, Score: 100000000, Nodes: 0
+
+=== Session started at 2026-02-17 04:49:49.925331 ===
+[04:54:56.887] Selected: 1f4i, Score: 6200, Nodes: 25569176
+
+=== Session started at 2026-02-17 04:55:40.689491 ===
+
+=== Session started at 2026-02-17 04:56:17.198532 ===
+[04:56:18.926] Selected: G*4e, Score: 100000000, Nodes: 0
