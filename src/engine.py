@@ -20,6 +20,12 @@ class ShogiEngine:
 
     def search(self, board: cshogi.Board, depth: int) -> SearchResult:
         self.nodes = 0
+        # 一手詰みを最優先でチェック（重い探索を避ける）
+        mate_in_one = self._find_mate_in_one(board)
+        if mate_in_one is not None:
+            move_usi = cshogi.move_to_usi(mate_in_one)
+            print(f"DEBUG: Mate in 1 found: {move_usi}", flush=True)
+            return SearchResult(move=mate_in_one, score=10**8, nodes=self.nodes, depth=depth)
         score, move = self._negamax(board, depth, -10**9, 10**9)
         
         # デバッグ: 返された手を確認
@@ -45,6 +51,18 @@ class ShogiEngine:
             print(f"DEBUG: Selected: {move_usi}, Score: {score}, Nodes: {self.nodes}", flush=True)
         
         return SearchResult(move=move, score=score, nodes=self.nodes, depth=depth)
+
+    def _find_mate_in_one(self, board: cshogi.Board) -> Optional[int]:
+        """一手で詰む手があれば返す。なければNone。"""
+        for move in board.legal_moves:
+            board.push(move)
+            # cshogiにはis_checkmateが無い環境があるため、
+            # 「王手」かつ「合法手が0」を詰みとして判定する
+            is_mate = board.is_check() and not any(board.legal_moves)
+            board.pop()
+            if is_mate:
+                return move
+        return None
 
     def _negamax(self, board: cshogi.Board, depth: int, alpha: int, beta: int) -> Tuple[int, Optional[int]]:
         self.nodes += 1
@@ -194,7 +212,7 @@ class ShogiEngine:
             5: 700,   # 角
             6: 800,   # 飛
             7: 500,   # 金
-            8: 10000, # 玉
+            8: 100000, # 玉
             9: 500,   # と
             10: 500,  # 成香
             11: 500,  # 成桂

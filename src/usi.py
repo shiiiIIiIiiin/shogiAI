@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import traceback
 import cshogi
 from datetime import datetime
 
@@ -31,6 +32,10 @@ class USIEngine:
                 line = input().strip()
             except EOFError:
                 break
+            except Exception:
+                self.log_debug("ERROR: input failed")
+                self.log_debug(traceback.format_exc().strip())
+                continue
 
             if not line:
                 continue
@@ -38,27 +43,34 @@ class USIEngine:
             parts = line.split()
             cmd = parts[0]
 
-            if cmd == "usi":
-                print("id name ShogiAlgo")
-                print("id author kimura")
-                print("usiok")
-                sys.stdout.flush()
+            try:
+                if cmd == "usi":
+                    print("id name ShogiAlgo")
+                    print("id author kimura")
+                    print("usiok")
+                    sys.stdout.flush()
 
-            elif cmd == "isready":
-                print("readyok")
-                sys.stdout.flush()
+                elif cmd == "isready":
+                    print("readyok")
+                    sys.stdout.flush()
 
-            elif cmd == "usinewgame":
-                self.board = cshogi.Board()
+                elif cmd == "usinewgame":
+                    self.board = cshogi.Board()
 
-            elif cmd == "position":
-                self._handle_position(parts[1:])
+                elif cmd == "position":
+                    self._handle_position(parts[1:])
 
-            elif cmd == "go":
-                self._handle_go(parts[1:])
+                elif cmd == "go":
+                    self._handle_go(parts[1:])
 
-            elif cmd == "quit":
-                break
+                elif cmd == "quit":
+                    break
+            except Exception:
+                self.log_debug(f"ERROR: command failed ({cmd})")
+                self.log_debug(traceback.format_exc().strip())
+                if cmd == "go":
+                    print("bestmove resign")
+                    sys.stdout.flush()
 
     def _handle_position(self, args: list[str]) -> None:
         if not args:
