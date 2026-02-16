@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import cshogi
+from datetime import datetime
 
 from engine import ShogiEngine
 
@@ -10,6 +11,19 @@ class USIEngine:
     def __init__(self) -> None:
         self.board = cshogi.Board()
         self.engine = ShogiEngine()
+        # デバッグログファイル
+        self.debug_log = open("shogialgo_debug.log", "a")
+        self.debug_log.write(f"\n=== Session started at {datetime.now()} ===\n")
+        self.debug_log.flush()
+
+    def log_debug(self, message: str) -> None:
+        """デバッグメッセージをファイルとUSI infoで出力"""
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        log_msg = f"[{timestamp}] {message}"
+        self.debug_log.write(log_msg + "\n")
+        self.debug_log.flush()
+        # USI info で将棋所にも送る
+        print(f"info string {message}", flush=True)
 
     def run(self) -> None:
         while True:
@@ -78,8 +92,10 @@ class USIEngine:
         
         if result.move is not None:
             move_usi = cshogi.move_to_usi(result.move)
+            self.log_debug(f"Selected: {move_usi}, Score: {result.score}, Nodes: {result.nodes}")
             print(f"bestmove {move_usi}")
         else:
+            self.log_debug(f"ERROR: No move returned")
             print("bestmove resign")
         
         sys.stdout.flush()

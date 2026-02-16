@@ -93,10 +93,23 @@ class ShogiEngine:
         # キャプチャーのみ探索（最大3手分）
         best_score = stand_pat
         if depth < 3:
+            # キャプチャー手を集めて、駒の価値でソート（大きい駒から）
+            captures = []
             for move in self._generate_moves(board):
-                # キャプチャーでない手はスキップ
                 to_sq = cshogi.move_to(move)
                 if board.piece(to_sq) == 0:
+                    continue
+                piece_type = board.piece_type(to_sq)
+                piece_value = self._piece_value(piece_type)
+                captures.append((piece_value, move))
+            
+            # 大きい駒から順に探索（枝狩り効率向上）
+            captures.sort(reverse=True)
+            
+            for _, move in captures:
+                # 念のため合法性確認
+                if not board.is_legal(move):
+                    print(f"DEBUG: quiescence - skipping illegal move", flush=True)
                     continue
                 
                 board.push(move)
