@@ -24,17 +24,36 @@ class ShogiEngine:
         
         # デバッグ: 返された手を確認
         if move is None:
-            print(f"info string ERROR: move is None!", flush=True)
+            print(f"DEBUG: _negamax returned None", flush=True)
+            # フォールバック：最初の合法手を使う
+            legal_moves = list(board.legal_moves)
+            if legal_moves:
+                move = legal_moves[0]
+                move_usi = cshogi.move_to_usi(move)
+                print(f"DEBUG: FALLBACK - using first legal move: {move_usi}", flush=True)
+            else:
+                print(f"DEBUG: ERROR - no legal moves available!", flush=True)
+        elif not board.is_legal(move):
+            print(f"DEBUG: WARNING - illegal move detected!", flush=True)
+            legal_moves = list(board.legal_moves)
+            if legal_moves:
+                move = legal_moves[0]
+                move_usi = cshogi.move_to_usi(move)
+                print(f"DEBUG: FALLBACK - using first legal move: {move_usi}", flush=True)
         else:
             move_usi = cshogi.move_to_usi(move)
-            print(f"info string Selected: {move_usi}, Score: {score}", flush=True)
+            print(f"DEBUG: Selected: {move_usi}, Score: {score}, Nodes: {self.nodes}", flush=True)
         
         return SearchResult(move=move, score=score, nodes=self.nodes, depth=depth)
 
     def _negamax(self, board: cshogi.Board, depth: int, alpha: int, beta: int) -> Tuple[int, Optional[int]]:
         self.nodes += 1
 
-        if depth == 0 or board.is_game_over():
+        if depth == 0:
+            # 静止探索：キャプチャーが続く場合のみ深く探索
+            return self._quiescence(board, 0, alpha, beta), None
+
+        if board.is_game_over():
             return self.evaluate(board), None
 
         best_move: Optional[int] = None
@@ -55,8 +74,44 @@ class ShogiEngine:
             if alpha >= beta:
                 break
 
-        # 安全装置なし（原因特定用）
         return best_score, best_move
+
+    def _quiescence(self, board: cshogi.Board, depth: int, alpha: int, beta: int) -> int:
+        """静止探索：キャプチャーが続く局面のみ深く探索"""
+        self.nodes += 1
+        
+        if board.is_game_over():
+            return self.evaluate(board)
+        
+        # 現在の局面の評価
+        stand_pat = self.evaluate(board)
+        if stand_pat >= beta:
+            return beta
+        if stand_pat > alpha:
+            alpha = stand_pat
+        
+        # キャプチャーのみ探索（最大3手分）
+        best_score = stand_pat
+        if depth < 3:
+            for move in self._generate_moves(board):
+                # キャプチャーでない手はスキップ
+                to_sq = cshogi.move_to(move)
+                if board.piece(to_sq) == 0:
+                    continue
+                
+                board.push(move)
+                score = -self._quiescence(board, depth + 1, -beta, -alpha)
+                board.pop()
+                
+                if score > best_score:
+                    best_score = score
+                
+                if score > alpha:
+                    alpha = score
+                if alpha >= beta:
+                    break
+        
+        return best_score
 
     def _generate_moves(self, board: cshogi.Board) -> List[int]:
         """手順最適化: 取る手 → 王手 → その他の順で返す"""
