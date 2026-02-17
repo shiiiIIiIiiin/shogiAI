@@ -221,11 +221,14 @@ class ShogiEngine:
                 material -= value
 
         # 持ち駒を評価
+        # pieces_in_hand の順序は HandPiece順: [歩,香,桂,銀,金,角,飛]
+        # PieceType順 (歩=1,香=2,桂=3,銀=4,角=5,飛=6,金=7) とは金/角/飛の順が異なる
+        hand_piece_types = [1, 2, 3, 4, 7, 5, 6]  # HandPiece順 → PieceType値
         black_hand, white_hand = board.pieces_in_hand
-        for i, count in enumerate(black_hand, start=1):
-            material += count * self._piece_value(i)
-        for i, count in enumerate(white_hand, start=1):
-            material -= count * self._piece_value(i)
+        for pt, count in zip(hand_piece_types, black_hand):
+            material += count * self._piece_value(pt)
+        for pt, count in zip(hand_piece_types, white_hand):
+            material -= count * self._piece_value(pt)
 
         # 手番視点で返す
         if board.turn == cshogi.WHITE:
