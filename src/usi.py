@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import sys
+import traceback
 import cshogi
+from datetime import datetime
 
 from engine import ShogiEngine
 
@@ -10,6 +12,19 @@ class USIEngine:
     def __init__(self) -> None:
         self.board = cshogi.Board()
         self.engine = ShogiEngine()
+        # デバッグログファイル
+        self.debug_log = open("shogialgo_debug.log", "a")
+        self.debug_log.write(f"\n=== Session started at {datetime.now()} ===\n")
+        self.debug_log.flush()
+
+    def log_debug(self, message: str) -> None:
+        """デバッグメッセージをファイルとUSI infoで出力"""
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        log_msg = f"[{timestamp}] {message}"
+        self.debug_log.write(log_msg + "\n")
+        self.debug_log.flush()
+        # USI info で将棋所にも送る
+        print(f"info string {message}", flush=True)
 
     def run(self) -> None:
         while True:
@@ -17,6 +32,10 @@ class USIEngine:
                 line = input().strip()
             except EOFError:
                 break
+            except Exception:
+                self.log_debug("ERROR: input failed")
+                self.log_debug(traceback.format_exc().strip())
+                continue
 
             if not line:
                 continue
@@ -24,27 +43,34 @@ class USIEngine:
             parts = line.split()
             cmd = parts[0]
 
-            if cmd == "usi":
-                print("id name shogiAI")
-                print("id author kimura")
-                print("usiok")
-                sys.stdout.flush()
+            try:
+                if cmd == "usi":
+                    print("id name ShogiAlgo")
+                    print("id author kimura")
+                    print("usiok")
+                    sys.stdout.flush()
 
-            elif cmd == "isready":
-                print("readyok")
-                sys.stdout.flush()
+                elif cmd == "isready":
+                    print("readyok")
+                    sys.stdout.flush()
 
-            elif cmd == "usinewgame":
-                self.board = cshogi.Board()
+                elif cmd == "usinewgame":
+                    self.board = cshogi.Board()
 
-            elif cmd == "position":
-                self._handle_position(parts[1:])
+                elif cmd == "position":
+                    self._handle_position(parts[1:])
 
-            elif cmd == "go":
-                self._handle_go(parts[1:])
+                elif cmd == "go":
+                    self._handle_go(parts[1:])
 
-            elif cmd == "quit":
-                break
+                elif cmd == "quit":
+                    break
+            except Exception:
+                self.log_debug(f"ERROR: command failed ({cmd})")
+                self.log_debug(traceback.format_exc().strip())
+                if cmd == "go":
+                    print("bestmove resign")
+                    sys.stdout.flush()
 
     def _handle_position(self, args: list[str]) -> None:
         if not args:
@@ -73,13 +99,15 @@ class USIEngine:
 
     def _handle_go(self, args: list[str]) -> None:
         # 簡易的に固定深さ探索
-        depth = 3
+        depth = 5
         result = self.engine.search(self.board, depth)
         
         if result.move is not None:
             move_usi = cshogi.move_to_usi(result.move)
+            self.log_debug(f"Selected: {move_usi}, Score: {result.score}, Nodes: {result.nodes}")
             print(f"bestmove {move_usi}")
         else:
+            self.log_debug(f"ERROR: No move returned")
             print("bestmove resign")
         
         sys.stdout.flush()
