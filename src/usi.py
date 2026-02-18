@@ -98,7 +98,7 @@ class USIEngine:
                 self.board.push(move)
 
     def _handle_go(self, args: list[str]) -> None:
-        # 簡易的に固定深さ探索
+        # 簡易的に固定深さ探索 + 秒数制限
         depth = 5
         result = self.engine.search(self.board, depth)
         
@@ -111,6 +111,7 @@ class USIEngine:
             print("bestmove resign")
         
         sys.stdout.flush()
+
 
 
 if __name__ == "__main__":

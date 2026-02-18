@@ -32,3 +32,6 @@ data/
 # OS
 .DS_Store
 Thumbs.db
+
+# Debug log
+shogialgo_debug.log

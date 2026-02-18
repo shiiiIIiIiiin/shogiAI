@@ -1,100 +1,74 @@
 
-=== Session started at 2026-02-16 16:14:48.268066 ===
-[16:14:51.525] Selected: 1c1d, Score: 0, Nodes: 61057
-[16:14:57.441] Selected: 1d1e, Score: 0, Nodes: 176316
-[16:15:01.736] Selected: 3a3b, Score: 0, Nodes: 189025
-[16:15:04.037] Selected: 2c2d, Score: 0, Nodes: 72321
-[16:15:07.743] Selected: P*2c, Score: 0, Nodes: 140414
-[16:15:16.497] Selected: 3c3d, Score: 0, Nodes: 282236
-[16:15:46.488] Selected: 5c5d, Score: 0, Nodes: 843163
-[16:16:10.993] Selected: 2b4d, Score: -100, Nodes: 724290
-[16:17:24.883] Selected: 4c4d, Score: -200, Nodes: 357441
-[16:18:14.034] Selected: B*1c, Score: -100, Nodes: 2087677
-[16:22:30.788] Selected: 1c5g+, Score: 0, Nodes: 806094
-[16:24:35.104] Selected: 2a3c, Score: -200, Nodes: 3125893
-
-=== Session started at 2026-02-17 02:04:14.605975 ===
-[02:04:16.256] Selected: 1c1d, Score: 0, Nodes: 61057
-[02:04:52.232] Selected: 3a3b, Score: 0, Nodes: 196340
-[02:05:02.273] Selected: 2c2d, Score: 0, Nodes: 62913
-[02:05:07.693] Selected: P*2c, Score: 0, Nodes: 280981
-[02:05:17.746] Selected: 1d1e, Score: 0, Nodes: 238574
-[02:05:28.125] Selected: 8c8d, Score: 0, Nodes: 523361
-[02:05:47.868] Selected: 8d8e, Score: 0, Nodes: 581175
-[02:05:59.177] Selected: 8e8f, Score: 0, Nodes: 472684
-[02:06:22.103] Selected: 8f8g+, Score: 200, Nodes: 331756
-[02:06:45.412] Selected: P*8h, Score: 600, Nodes: 887719
-[02:07:16.908] Selected: 2b3c, Score: 700, Nodes: 322735
-[02:07:28.958] Selected: 2a3c, Score: 900, Nodes: 124440
-[02:08:08.621] Selected: 8h8i+, Score: 1600, Nodes: 1007357
-[02:08:47.899] Selected: 8i7i, Score: 1700, Nodes: 2633795
-[02:11:16.089] Selected: B*7g, Score: 1400, Nodes: 11629354
-[02:13:38.626] Selected: 7g9i+, Score: 1700, Nodes: 7508271
-[02:16:42.524] Selected: L*7h, Score: 1800, Nodes: 11731543
-[02:19:25.704] Selected: 9i4d, Score: 1800, Nodes: 8222050
-[02:22:30.256] Selected: N*3f, Score: 2800, Nodes: 3645441
-[02:23:37.048] Selected: 4d3d, Score: 2400, Nodes: 3717605
-[02:24:42.405] Selected: P*3e, Score: 1900, Nodes: 4110706
-[02:25:22.270] Selected: 4d3d, Score: 2400, Nodes: 2531073
-[02:28:46.162] Selected: 1e1f, Score: 2600, Nodes: 13811152
-[02:33:28.804] Selected: P*8h, Score: 2800, Nodes: 19765245
-[02:35:35.860] Selected: N*3f, Score: 3000, Nodes: 7758484
-[02:36:43.227] Selected: 8h8i+, Score: 3200, Nodes: 3749134
-[02:38:45.997] Selected: 8g9g, Score: 3200, Nodes: 5879711
-[02:41:54.841] Selected: 3d1f, Score: 3600, Nodes: 9621376
-[02:44:47.355] Selected: L*2d, Score: 4000, Nodes: 11192682
-[02:48:39.332] Selected: 2d2g+, Score: 4400, Nodes: 7645116
-[02:50:55.606] Selected: 3e3f, Score: 5000, Nodes: 5001502
-[02:55:46.758] Selected: 2g2f, Score: 6000, Nodes: 22940281
-[03:08:17.889] Selected: 1f4i, Score: 6200, Nodes: 25569176
-[03:19:27.256] Selected: R*3f, Score: 6900, Nodes: 53359074
-[03:26:46.290] Selected: 3f3i+, Score: 6900, Nodes: 30383555
-[03:33:37.930] Selected: 3i2i, Score: 6900, Nodes: 28661019
-[04:05:10.843] Selected: 2i1h, Score: 7500, Nodes: 82876011
-
-=== Session started at 2026-02-17 04:10:25.722963 ===
-[04:18:04.727] Selected: 3f3i+, Score: 6900, Nodes: 30383555
-
-=== Session started at 2026-02-17 04:28:02.560913 ===
-[04:35:15.325] Selected: 3f3i+, Score: 6900, Nodes: 30383555
-
-=== Session started at 2026-02-17 04:37:22.009038 ===
-
-=== Session started at 2026-02-17 04:37:33.669675 ===
-
-=== Session started at 2026-02-17 04:37:43.134420 ===
-
-=== Session started at 2026-02-17 04:39:13.689710 ===
-[04:39:13.689] ERROR: command failed (go)
-[04:39:13.689] Traceback (most recent call last):
-  File "C:\Users\kimura\Desktop\SHOGIAI\src\usi.py", line 64, in run
-    self._handle_go(parts[1:])
-  File "C:\Users\kimura\Desktop\SHOGIAI\src\usi.py", line 103, in _handle_go
-    result = self.engine.search(self.board, depth)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\kimura\Desktop\SHOGIAI\src\engine.py", line 24, in search
-    mate_in_one = self._find_mate_in_one(board)
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\kimura\Desktop\SHOGIAI\src\engine.py", line 59, in _find_mate_in_one
-    is_mate = board.is_checkmate()
-              ^^^^^^^^^^^^^^^^^^
-AttributeError: 'cshogi._cshogi.Board' object has no attribute 'is_checkmate'
-
-=== Session started at 2026-02-17 04:40:53.310750 ===
-[04:40:53.314] Selected: S*5d, Score: 100000000, Nodes: 0
-
-=== Session started at 2026-02-17 04:44:35.997697 ===
-
-=== Session started at 2026-02-17 04:44:46.864485 ===
-[04:44:46.864] Selected: S*5d, Score: 100000000, Nodes: 0
-
-=== Session started at 2026-02-17 04:49:16.416382 ===
-[04:49:16.422] Selected: G*4e, Score: 100000000, Nodes: 0
-
-=== Session started at 2026-02-17 04:49:49.925331 ===
-[04:54:56.887] Selected: 1f4i, Score: 6200, Nodes: 25569176
-
-=== Session started at 2026-02-17 04:55:40.689491 ===
-
-=== Session started at 2026-02-17 04:56:17.198532 ===
-[04:56:18.926] Selected: G*4e, Score: 100000000, Nodes: 0
+=== Session started at 2026-02-17 23:31:06.792982 ===
+[23:31:08.462] Selected: 1c1d, Score: 0, Nodes: 13113
+[23:31:11.241] Selected: 1d1e, Score: 0, Nodes: 29312
+[23:31:13.506] Selected: 3a4b, Score: 0, Nodes: 77916
+[23:31:16.066] Selected: 7c7d, Score: 0, Nodes: 85189
+[23:31:25.470] Selected: 2c2d, Score: -200, Nodes: 20669
+[23:31:27.771] Selected: 4a3b, Score: -200, Nodes: 31465
+[23:31:34.426] Selected: P*2c, Score: -200, Nodes: 153013
+[23:31:52.446] Selected: 2c2d, Score: -200, Nodes: 60568
+[23:31:55.926] Selected: P*2c, Score: -200, Nodes: 25951
+[23:32:04.583] Selected: 8c8d, Score: -200, Nodes: 126546
+[23:32:09.937] Selected: 8d8e, Score: -200, Nodes: 135153
+[23:32:20.378] Selected: 3c3d, Score: -200, Nodes: 156255
+[23:32:26.565] Selected: 3d3e, Score: -200, Nodes: 189917
+[23:32:34.986] Selected: 3e3f, Score: -200, Nodes: 100187
+[23:32:38.673] Selected: P*3a, Score: -200, Nodes: 147958
+[23:32:56.172] Selected: 4c4d, Score: -200, Nodes: 181052
+[23:33:05.407] Selected: 5c5d, Score: -200, Nodes: 134570
+[23:33:09.303] Selected: 2a3c, Score: -200, Nodes: 164861
+[23:33:16.012] Selected: 4b4c, Score: -100, Nodes: 148385
+[23:33:47.126] Selected: 2c2d, Score: -200, Nodes: 182587
+[23:34:00.708] Selected: 3c2e, Score: -600, Nodes: 113637
+[23:34:21.569] Selected: 3b3c, Score: 0, Nodes: 78712
+[23:34:24.734] Selected: 3c2c, Score: 0, Nodes: 67711
+[23:34:33.141] Selected: P*7f, Score: 0, Nodes: 146010
+[23:34:38.749] Selected: 3a3b, Score: -200, Nodes: 150776
+[23:34:53.019] Selected: 2c3d, Score: -300, Nodes: 169641
+[23:35:01.947] Selected: P*6h, Score: -500, Nodes: 160918
+[23:35:09.826] Selected: 2e1g+, Score: -900, Nodes: 166040
+[23:35:19.565] Selected: P*7g, Score: -1300, Nodes: 267877
+[23:35:27.854] Selected: 1e1f, Score: -1500, Nodes: 246825
+[23:35:31.225] Selected: 1a1f, Score: -1300, Nodes: 67843
+[23:35:38.061] Selected: L*4g, Score: -1700, Nodes: 382843
+[23:35:44.378] Selected: 4g4h+, Score: -1900, Nodes: 146812
+[23:35:50.216] Selected: 7a6b, Score: -2400, Nodes: 309394
+[23:35:57.307] Selected: 4b5c, Score: -2400, Nodes: 248677
+[23:36:04.376] Selected: 3d3c, Score: -2600, Nodes: 205970
+[23:36:41.354] Selected: 8a7c, Score: -2500, Nodes: 459112
+[23:36:52.251] Selected: 2d2e, Score: -2500, Nodes: 360256
+[23:37:12.058] Selected: 4d4e, Score: -2500, Nodes: 205563
+[23:37:15.827] Selected: 2b5e, Score: -1800, Nodes: 78088
+[23:37:44.355] Selected: 4d4e, Score: -2500, Nodes: 446421
+[23:37:49.721] Selected: 8b7b, Score: -2900, Nodes: 102632
+[23:38:07.005] Selected: 4e4f, Score: -2500, Nodes: 89762
+[23:38:14.989] Selected: 4f4g+, Score: -2200, Nodes: 97524
+[23:38:18.301] Selected: P*5h, Score: -3000, Nodes: 97413
+[23:38:22.157] Selected: 9c9d, Score: -3300, Nodes: 116950
+[23:38:27.633] Selected: 6a7b, Score: -4500, Nodes: 107772
+[23:38:33.559] Selected: L*4a, Score: -4700, Nodes: 161779
+[23:38:40.826] Selected: 2b7g+, Score: -4200, Nodes: 88847
+[23:38:51.196] Selected: S*3h, Score: -4100, Nodes: 285815
+[23:39:00.092] Selected: 3h2i+, Score: -4100, Nodes: 123023
+[23:39:09.520] Selected: 4a4f, Score: -3900, Nodes: 128402
+[23:39:14.958] Selected: P*1d, Score: -3700, Nodes: 116862
+[23:39:21.624] Selected: N*6c, Score: -3900, Nodes: 91765
+[23:39:27.671] Selected: 4f4g+, Score: -4100, Nodes: 50230
+[23:39:33.475] Selected: 6c5e, Score: -4700, Nodes: 238792
+[23:39:41.413] Selected: 7c6e, Score: -5300, Nodes: 360579
+[23:39:49.655] Selected: 3d4d, Score: -5100, Nodes: 94262
+[23:40:03.193] Selected: 5c4b, Score: -5300, Nodes: 261266
+[23:40:09.912] Selected: 6e5g+, Score: -5900, Nodes: 180109
+[23:40:13.753] Selected: 4b4c, Score: -6500, Nodes: 113947
+[23:40:21.113] Selected: 6b6c, Score: -6300, Nodes: 187718
+[23:40:29.769] Selected: 4d3e, Score: -6100, Nodes: 283276
+[23:40:32.877] Selected: 4c5b, Score: -6200, Nodes: 133081
+[23:40:40.030] Selected: N*4e, Score: -6100, Nodes: 121131
+[23:40:45.548] Selected: 6c7d, Score: -6500, Nodes: 118181
+[23:40:54.611] Selected: N*4a, Score: -6900, Nodes: 358788
+[23:41:10.561] Selected: 7d6e, Score: -6900, Nodes: 365172
+[23:41:14.916] Selected: 4e5g+, Score: -5700, Nodes: 96652
+[23:41:25.066] Selected: 5a6a, Score: -7500, Nodes: 597390
+[23:41:38.705] Selected: 7b8b, Score: -7300, Nodes: 312862
+[23:41:58.445] ERROR: No move returned

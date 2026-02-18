@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake --build:*)",
+      "Bash(\"c:\\\\Users\\\\kimura\\\\Desktop\\\\shogiAI\\\\cpp\\\\build\\\\Release\\\\ShogiAlgo.exe\")"
+    ]
+  }
+}

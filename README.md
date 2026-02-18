@@ -2,20 +2,29 @@
 
 Negamax アルゴリズムと静止探索を備えた将棋AI エンジン。Web UI と USI インターフェース対応。
 
+Python版とC++版の2つのエンジンがあります。
+
 ## 特徴
 
 - ✅ **Negamax + Alpha-Beta 枝狩り** による効率的な探索
 - ✅ **静止探索（Quiescence Search）** でキャプチャーシーケンスを自動評価
+- ✅ **反復深化 + 時間制御** で対局サーバーの持ち時間に対応
+- ✅ **C++版 (ShogiAlgo-cpp)** で高速探索（Python版の数十倍）
 - ✅ **Web UI** でブラウザから対戦可能（ドラッグ&ドロップ対応）
-- ✅ **USI プロトコル対応** で将棋所などのGUIと接続可能
+- ✅ **USI プロトコル対応** で将棋所・Floodgateと接続可能
 - ✅ **配布アプリ化** - ShogiAlgo.exe で友達に配布できます
 
 ## 必要なもの
 
+### Python版
 - Python 3.8+
 - cshogi
 - Flask
 - numpy
+
+### C++版
+- CMake 3.15+
+- C++17対応コンパイラ（Visual Studio 2022 等）
 
 ## セットアップ
 
@@ -48,13 +57,26 @@ python web/app.py
 
 ### 2. USI エンジンとして使用（将棋所など）
 
+**Python版:**
 ```bash
 python src/usi.py
 ```
 
-将棋所などのGUIで、このエンジンをエンジン登録して対戦できます。
+**C++版（高速・推奨）:**
+```bash
+cd cpp
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
+生成された `cpp/build/Release/ShogiAlgo.exe` を将棋所にエンジン登録して対戦できます。
 
-### 3. 配布用 .exe 作成
+### 3. Floodgate に参加
+
+1. 将棋所に C++版エンジン (`ShogiAlgo.exe`) を登録
+2. 「対局」→「サーバー通信対局(floodgate)」を選択
+3. ログイン名とパスワードを設定して対局開始
+
+### 4. 配布用 .exe 作成
 
 ```bash
 pyinstaller --onefile --console --name "ShogiAlgo" \
@@ -73,9 +95,13 @@ pyinstaller --onefile --console --name "ShogiAlgo" \
 ```
 shogiAI/
 ├── src/
-│   ├── engine.py       # Negamax エンジン実装
-│   ├── usi.py          # USI プロトコルハンドラ
+│   ├── engine.py       # Python版 Negamax エンジン
+│   ├── usi.py          # Python版 USI プロトコルハンドラ
 │   └── play.py         # CLI版（テスト用）
+├── cpp/
+│   ├── main.cpp        # C++版 エンジン + USI（反復深化・時間制御付き）
+│   ├── CMakeLists.txt  # ビルド設定
+│   └── cshogi/         # cshogi C++ライブラリ（盤面管理・合法手生成）
 ├── web/
 │   ├── app.py          # Flask サーバー
 │   └── templates/
@@ -107,9 +133,9 @@ shogiAI/
 
 ### 探索深さ
 
-- Web UI: depth = 5
-- USI: depth = 5
-- 調整可能：`web/app.py` または `src/usi.py` の `depth` 変数を変更
+- **Python版**: 固定 depth = 5
+- **C++版**: 反復深化（時間制限内で可能な限り深く探索）
+  - Floodgate（10分+10秒フィッシャー）では depth 7〜9 程度
 
 ## トラブルシューティング
 
