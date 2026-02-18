@@ -236,7 +236,7 @@ private:
         }
 
         if (board.is_game_over()) {
-            return evaluate(board);
+            return -999999 + (30 - depth);
         }
 
         int bestScore = -1000000000;
@@ -273,7 +273,7 @@ private:
         if (isTimeUp()) { stopSearch = true; return 0; }
 
         if (board.is_game_over()) {
-            return evaluate(board);
+            return -999999;
         }
 
         int standPat = evaluate(board);
