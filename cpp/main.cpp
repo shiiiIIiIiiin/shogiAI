@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <climits>
 #include <chrono>
+#include <cmath>
 
 // ============================================================
 // 駒の評価値テーブル (engine.py:_piece_value の移植)
@@ -56,6 +57,95 @@ static int handCount(const Hand& h, HandPiece hp) {
         case HRook:   return h.numOf<HRook>();
         default:      return 0;
     }
+}
+
+// ============================================================
+// 駒の位置評価 (Piece-Square Table)
+// ============================================================
+// rank: 0=一段(敵陣奥), 8=九段(自陣奥) ※先手視点
+// 後手の場合は rank を反転して使う
+static int positionalBonus(PieceType pt, int file, int rank) {
+    int bonus = 0;
+    switch (pt) {
+        case Pawn:
+            // 前進ボーナス + 中央筋ボーナス
+            bonus = (8 - rank) * 2;
+            if (file >= 2 && file <= 6) bonus += 3;
+            break;
+        case Lance:
+            bonus = std::max(0, (7 - rank)) * 2;
+            break;
+        case Knight:
+            bonus = std::max(0, (6 - rank)) * 3;
+            if (file >= 2 && file <= 6) bonus += 5;
+            break;
+        case Silver:
+            bonus = std::max(0, (7 - rank)) * 3;
+            if (file >= 2 && file <= 6) bonus += 5;
+            break;
+        case Gold:
+            bonus = std::max(0, (7 - rank)) * 2;
+            break;
+        case Bishop: {
+            // 中央寄りボーナス
+            int cd = abs(file - 4) + abs(rank - 4);
+            bonus = std::max(0, 15 - cd * 2);
+            break;
+        }
+        case Rook:
+            // 飛車活用: 前進で大きなボーナス
+            bonus = std::max(0, (7 - rank)) * 7;
+            break;
+        case King:
+            // 囲い位置ボーナス（控えめ: 最大12点）
+            if (rank >= 7) bonus += 7;
+            else if (rank == 6) bonus += 3;
+            else bonus -= (6 - rank) * 2;
+            // 端寄りボーナス
+            if (file == 1 || file == 7) bonus += 5;
+            else if (file == 0 || file == 2 || file == 6 || file == 8) bonus += 3;
+            else bonus -= 3;
+            break;
+        case ProPawn: case ProLance: case ProKnight: case ProSilver:
+            bonus = std::max(0, (6 - rank)) * 3;
+            if (file >= 2 && file <= 6) bonus += 5;
+            break;
+        case Horse: {
+            int cd = abs(file - 4) + abs(rank - 4);
+            bonus = std::max(0, 12 - cd * 2);
+            if (rank < 6) bonus += (6 - rank) * 2;
+            break;
+        }
+        case Dragon:
+            bonus = std::max(0, (6 - rank)) * 6;
+            break;
+        default:
+            break;
+    }
+    return bonus;
+}
+
+// 玉の安全度: 隣接8マスの味方駒 (飛車・龍除く)
+static int kingSafety(const Position& pos, Square kingSq, Color c) {
+    int safety = 0;
+    int kf = (int)makeFile(kingSq);
+    int kr = (int)makeRank(kingSq);
+    for (int df = -1; df <= 1; ++df) {
+        for (int dr = -1; dr <= 1; ++dr) {
+            if (df == 0 && dr == 0) continue;
+            int nf = kf + df;
+            int nr = kr + dr;
+            if (nf < 0 || nf > 8 || nr < 0 || nr > 8) continue;
+            Square nsq = makeSquare((File)nf, (Rank)nr);
+            Piece p = pos.piece(nsq);
+            if (p != Empty && pieceToColor(p) == c) {
+                PieceType pt = pieceToPieceType(p);
+                if (pt == Rook || pt == Dragon) continue;
+                safety += 25;
+            }
+        }
+    }
+    return safety;
 }
 
 // ============================================================
@@ -155,25 +245,49 @@ private:
         return elapsedMs >= searchTimeLimitMs;
     }
 
-    // 評価関数
+    // 評価関数 (駒割り + PST + 玉の安全度)
     int evaluate(__Board& board) {
         const Position& pos = board.pos;
         int material = 0;
+        int positional = 0;
+        Square blackKingSq = SQ59; // デフォルト
+        Square whiteKingSq = SQ51;
 
         for (Square sq = SQ11; sq < SquareNum; ++sq) {
             Piece p = pos.piece(sq);
             if (p == Empty) continue;
 
             PieceType pt = pieceToPieceType(p);
+            Color c = pieceToColor(p);
             int value = pieceTypeValue(pt);
 
-            if (pieceToColor(p) == Black) {
+            // 玉の位置を記録
+            if (pt == King) {
+                if (c == Black) blackKingSq = sq;
+                else whiteKingSq = sq;
+            }
+
+            // 駒割り
+            if (c == Black) {
                 material += value;
             } else {
                 material -= value;
             }
+
+            // PST: 位置ボーナス
+            int file = (int)makeFile(sq);
+            int rank = (int)makeRank(sq);
+            // 後手は rank を反転 (8 - rank)
+            int pstRank = (c == Black) ? rank : (8 - rank);
+            int pstBonus = positionalBonus(pt, file, pstRank);
+            if (c == Black) {
+                positional += pstBonus;
+            } else {
+                positional -= pstBonus;
+            }
         }
 
+        // 持ち駒評価
         const Hand blackHand = pos.hand(Black);
         const Hand whiteHand = pos.hand(White);
         for (HandPiece hp = HPawn; hp < HandPieceNum; ++hp) {
@@ -184,10 +298,16 @@ private:
             material -= wCount * value;
         }
 
+        // 玉の安全度
+        int safety = kingSafety(pos, blackKingSq, Black)
+                   - kingSafety(pos, whiteKingSq, White);
+
+        int score = material + positional + safety;
+
         if (pos.turn() == White) {
-            material = -material;
+            score = -score;
         }
-        return material;
+        return score;
     }
 
     // 手の並び替え: 取る手 → 王手 → その他
@@ -372,7 +492,7 @@ private:
 // ============================================================
 class USIHandler {
 public:
-    USIHandler() {}
+    USIHandler() : ply(0) {}
 
     void run() {
         std::string line;
@@ -412,6 +532,7 @@ public:
 private:
     __Board board;
     ShogiEngine engine;
+    int ply; // 現在の手数（定跡判定用）
 
     void handlePosition(std::istringstream& iss) {
         std::string rest;
@@ -419,10 +540,21 @@ private:
         if (!rest.empty() && rest[0] == ' ') {
             rest = rest.substr(1);
         }
+
+        // 手数をカウント（"moves" 以降のトークン数）
+        ply = 0;
+        size_t movesPos = rest.find("moves");
+        if (movesPos != std::string::npos) {
+            std::istringstream ms(rest.substr(movesPos + 5));
+            std::string m;
+            while (ms >> m) ply++;
+        }
+
         try {
             board.set_position(rest);
         } catch (...) {
             board = __Board();
+            ply = 0;
         }
     }
 
@@ -466,6 +598,15 @@ private:
             }
 
             if (timeLimitMs < 200) timeLimitMs = 200;
+
+            // 序盤は時間を節約して中終盤に回す
+            if (ply < 30) {
+                // ply 6(定跡直後)で30%, ply 30で100%に線形補間
+                int pct = 30 + (ply * 70 / 30);
+                if (pct > 100) pct = 100;
+                timeLimitMs = timeLimitMs * pct / 100;
+                if (timeLimitMs < 200) timeLimitMs = 200;
+            }
 
             // 残り時間が少ない場合はさらに短く
             if (myTime < 10000) {
