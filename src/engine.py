@@ -17,17 +17,15 @@ class SearchResult:
 class ShogiEngine:
     def __init__(self) -> None:
         self.nodes = 0
-        # 詰み探索の深さ（手数・ply）。2なら「2手詰め」相当
-        self.mate_search_depth = 2
 
     def search(self, board: cshogi.Board, depth: int) -> SearchResult:
         self.nodes = 0
-        # 先読み詰み探索（設定した深さで詰みがあれば即返す）
-        mate_move = self._find_mate(board, self.mate_search_depth)
-        if mate_move is not None:
-            move_usi = cshogi.move_to_usi(mate_move)
-            print(f"DEBUG: Mate in {self.mate_search_depth} found: {move_usi}", flush=True)
-            return SearchResult(move=mate_move, score=10**8, nodes=self.nodes, depth=depth)
+        # 一手詰みを最優先でチェック（重い探索を避ける）
+        mate_in_one = self._find_mate_in_one(board)
+        if mate_in_one is not None:
+            move_usi = cshogi.move_to_usi(mate_in_one)
+            print(f"DEBUG: Mate in 1 found: {move_usi}", flush=True)
+            return SearchResult(move=mate_in_one, score=10**8, nodes=self.nodes, depth=depth)
         score, move = self._negamax(board, depth, -10**9, 10**9)
         
         # デバッグ: 返された手を確認
@@ -54,46 +52,15 @@ class ShogiEngine:
         
         return SearchResult(move=move, score=score, nodes=self.nodes, depth=depth)
 
-    def _find_mate(self, board: cshogi.Board, depth: int) -> Optional[int]:
-        """depth手以内の詰み手があれば返す。なければNone。"""
-        if depth <= 0:
-            return None
+    def _find_mate_in_one(self, board: cshogi.Board) -> Optional[int]:
+        """一手で詰む手があれば返す。なければNone。"""
         for move in board.legal_moves:
             board.push(move)
-            if self._is_forced_mate(board, depth - 1, attacker=False):
-                board.pop()
+            is_mate = board.is_checkmate()
+            board.pop()
+            if is_mate:
                 return move
-            board.pop()
         return None
-
-    def _is_forced_mate(self, board: cshogi.Board, depth: int, attacker: bool) -> bool:
-        """手番側がdepth手以内に詰ませられるならTrue。"""
-        if depth <= 0:
-            return False
-
-        legal = list(board.legal_moves)
-        if not legal:
-            # 合法手が無い場合、王手中なら詰み
-            return board.is_check()
-
-        if attacker:
-            # 詰ませる側：どれか1つでも詰ませられればOK
-            for move in legal:
-                board.push(move)
-                if self._is_forced_mate(board, depth - 1, attacker=False):
-                    board.pop()
-                    return True
-                board.pop()
-            return False
-
-        # 受ける側：全ての手で詰みが避けられない場合のみ詰み
-        for move in legal:
-            board.push(move)
-            if not self._is_forced_mate(board, depth - 1, attacker=True):
-                board.pop()
-                return False
-            board.pop()
-        return True
 
     def _negamax(self, board: cshogi.Board, depth: int, alpha: int, beta: int) -> Tuple[int, Optional[int]]:
         self.nodes += 1
@@ -221,14 +188,11 @@ class ShogiEngine:
                 material -= value
 
         # 持ち駒を評価
-        # pieces_in_hand の順序は HandPiece順: [歩,香,桂,銀,金,角,飛]
-        # PieceType順 (歩=1,香=2,桂=3,銀=4,角=5,飛=6,金=7) とは金/角/飛の順が異なる
-        hand_piece_types = [1, 2, 3, 4, 7, 5, 6]  # HandPiece順 → PieceType値
         black_hand, white_hand = board.pieces_in_hand
-        for pt, count in zip(hand_piece_types, black_hand):
-            material += count * self._piece_value(pt)
-        for pt, count in zip(hand_piece_types, white_hand):
-            material -= count * self._piece_value(pt)
+        for i, count in enumerate(black_hand, start=1):
+            material += count * self._piece_value(i)
+        for i, count in enumerate(white_hand, start=1):
+            material -= count * self._piece_value(i)
 
         # 手番視点で返す
         if board.turn == cshogi.WHITE:
@@ -246,11 +210,11 @@ class ShogiEngine:
             5: 700,   # 角
             6: 800,   # 飛
             7: 500,   # 金
-            8: 100000, # 玉
-            9: 500,   # と
-            10: 500,  # 成香
-            11: 500,  # 成桂
-            12: 600,  # 成銀
+            8: 10000000, # 玉
+            9: 480,   # と
+            10: 480,  # 成香
+            11: 480,  # 成桂
+            12: 480,  # 成銀
             13: 900,  # 馬
             14: 900,  # 龍
         }

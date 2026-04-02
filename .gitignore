@@ -35,3 +35,9 @@ Thumbs.db
 
 # Debug log
 shogialgo_debug.log
+
+# Claude Code settings
+.claude/
+
+# Past models
+past_models/

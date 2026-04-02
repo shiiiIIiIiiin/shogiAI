@@ -2,34 +2,101 @@ from __future__ import annotations
 
 import os
 import sys
+import subprocess
 import webbrowser
 import threading
-from typing import Dict
+from typing import Dict, Optional
 
 from flask import Flask, jsonify, render_template, request
 import cshogi
 
 # PyInstaller対応: sys.path を先に設定
 if getattr(sys, 'frozen', False):
-    # PyInstaller でバンドルされている場合
     BASE_DIR = sys._MEIPASS
-    SRC_DIR = os.path.join(BASE_DIR, "src")
     TEMPLATE_DIR = os.path.join(BASE_DIR, "web", "templates")
-    if SRC_DIR not in sys.path:
-        sys.path.insert(0, SRC_DIR)
 else:
-    # 通常実行時
     WEB_DIR = os.path.dirname(os.path.abspath(__file__))
     ROOT_DIR = os.path.dirname(WEB_DIR)
-    SRC_DIR = os.path.join(ROOT_DIR, "src")
     TEMPLATE_DIR = os.path.join(WEB_DIR, "templates")
-    if SRC_DIR not in sys.path:
-        sys.path.append(SRC_DIR)
 
-from engine import ShogiEngine  # noqa: E402
+
+class CppEngine:
+    """C++ ShogiAlgo.exe とUSIプロトコルで通信するラッパー"""
+
+    def __init__(self, exe_path: str):
+        self.exe_path = exe_path
+        self.process: Optional[subprocess.Popen] = None
+        self._start()
+
+    def _start(self):
+        self.process = subprocess.Popen(
+            [self.exe_path],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+        self._send("usi")
+        self._wait_for("usiok")
+        self._send("isready")
+        self._wait_for("readyok")
+
+    def _send(self, cmd: str):
+        self.process.stdin.write(cmd + "\n")
+        self.process.stdin.flush()
+
+    def _wait_for(self, expected: str) -> str:
+        while True:
+            line = self.process.stdout.readline().strip()
+            if line == expected:
+                return line
+
+    def search(self, board: cshogi.Board, time_ms: int = 5000) -> Optional[str]:
+        """盤面を送ってbestmoveをUSI文字列で返す"""
+        if self.process is None or self.process.poll() is not None:
+            self._start()
+
+        sfen = board.sfen() if hasattr(board, "sfen") else board.to_sfen()
+        self._send(f"position sfen {sfen}")
+        self._send(f"go byoyomi {time_ms}")
+
+        while True:
+            line = self.process.stdout.readline().strip()
+            if line.startswith("bestmove"):
+                parts = line.split()
+                if len(parts) >= 2 and parts[1] != "resign" and parts[1] != "win":
+                    return parts[1]
+                return None
+
+    def close(self):
+        if self.process and self.process.poll() is None:
+            self._send("quit")
+            self.process.wait(timeout=3)
+
+
+def find_cpp_engine() -> str:
+    """C++エンジンのパスを探す"""
+    if getattr(sys, 'frozen', False):
+        base = sys._MEIPASS
+    else:
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    candidates = [
+        os.path.join(base, "cpp", "build", "Release", "ShogiAlgo.exe"),
+        os.path.join(base, "cpp", "build", "ShogiAlgo.exe"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    raise FileNotFoundError(
+        f"ShogiAlgo.exe が見つかりません。先にC++版をビルドしてください。\n"
+        f"検索パス: {candidates}"
+    )
+
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
-engine = ShogiEngine()
+engine = CppEngine(find_cpp_engine())
 
 PIECE_JP = {
     1: "歩",
@@ -176,7 +243,6 @@ def play():
     data = request.get_json(force=True)
     sfen = data.get("sfen")
     move_usi = (data.get("move") or "").strip()
-    depth = 5
 
     board = cshogi.Board(sfen) if sfen else cshogi.Board()
 
@@ -193,11 +259,17 @@ def play():
     if board.is_game_over():
         return jsonify(json_state(board, "終局です"))
 
-    # AIの手
-    result = engine.search(board, depth)
-    if result.move is None or not board.is_legal(result.move):
+    # AIの手 (C++エンジン)
+    move_usi = engine.search(board)
+    if move_usi is None:
         return jsonify(json_state(board, "AIが手を返せませんでした")), 500
-    board.push(result.move)
+    try:
+        move = board.move_from_usi(move_usi)
+    except Exception:
+        return jsonify(json_state(board, "AIが不正な手を返しました")), 500
+    if not board.is_legal(move):
+        return jsonify(json_state(board, "AIが不正な手を返しました")), 500
+    board.push(move)
 
     return jsonify(json_state(board, ""))
 
@@ -229,16 +301,22 @@ def player_move():
 def ai_move():
     data = request.get_json(force=True)
     sfen = data.get("sfen")
-    depth = 5
 
     board = cshogi.Board(sfen) if sfen else cshogi.Board()
     if board.is_game_over():
         return jsonify(json_state(board, "終局です"))
 
-    result = engine.search(board, depth)
-    if result.move is None or not board.is_legal(result.move):
+    # AIの手 (C++エンジン)
+    move_usi = engine.search(board)
+    if move_usi is None:
         return jsonify(json_state(board, "AIが手を返せませんでした")), 500
-    board.push(result.move)
+    try:
+        move = board.move_from_usi(move_usi)
+    except Exception:
+        return jsonify(json_state(board, "AIが不正な手を返しました")), 500
+    if not board.is_legal(move):
+        return jsonify(json_state(board, "AIが不正な手を返しました")), 500
+    board.push(move)
 
     return jsonify(json_state(board, ""))
 
